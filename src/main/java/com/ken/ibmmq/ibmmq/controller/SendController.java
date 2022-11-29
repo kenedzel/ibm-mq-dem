@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.jms.JMSException;
 
 @RestController
-@EnableJms
 public class SendController {
 
     @Autowired
@@ -29,46 +28,22 @@ public class SendController {
     public static Logger LOGGER = LoggerFactory.getLogger(SendController.class);
     @PostMapping("send")
     public ResponseEntity<String> send(@RequestHeader(value = "x-correlation-id") String correlationId, @RequestBody Order order) {
-        try  {
-                MQQueue sendMessageQueue = new MQQueue("DEV.QUEUE.1");
-                ObjectMapper objectMapper = new ObjectMapper();
-                String orderString = objectMapper.writeValueAsString(order);
-
-                LOGGER.info("Sending data: {}", orderString);
-                jmsTemplate.convertAndSend(sendMessageQueue, orderString, message -> {
-                    message.setJMSCorrelationID(correlationId);
-                    return message;
-                });
-            return new ResponseEntity<>(orderString, HttpStatus.ACCEPTED);
-        } catch(JmsException | JMSException | JsonProcessingException ex) {
-            ex.printStackTrace();
-            return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        return sendMessageToQueue("DEV.QUEUE.1", order, correlationId);
     }
 
     @PostMapping("send2")
     public ResponseEntity<String> sendQ2(@RequestHeader(value = "x-correlation-id") String correlationId, @RequestBody Order order) {
-        try  {
-            MQQueue sendMessageQueue = new MQQueue("DEV.QUEUE.2");
-            ObjectMapper objectMapper = new ObjectMapper();
-            String orderString = objectMapper.writeValueAsString(order);
-
-            LOGGER.info("Sending data: {}", orderString);
-            jmsTemplate.convertAndSend(sendMessageQueue, orderString, message -> {
-                message.setJMSCorrelationID(correlationId);
-                return message;
-            });
-            return new ResponseEntity<>(orderString, HttpStatus.ACCEPTED);
-        } catch(JmsException | JMSException | JsonProcessingException ex) {
-            ex.printStackTrace();
-            return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        return sendMessageToQueue("DEV.QUEUE.2", order, correlationId);
     }
 
     @PostMapping("send3")
     public ResponseEntity<String> sendQ3(@RequestHeader(value = "x-correlation-id") String correlationId, @RequestBody Order order) {
+        return sendMessageToQueue("DEV.QUEUE.3", order, correlationId);
+    }
+
+    private ResponseEntity<String> sendMessageToQueue(String queueName, Order order, String correlationId) {
         try  {
-            MQQueue sendMessageQueue = new MQQueue("DEV.QUEUE.3");
+            MQQueue sendMessageQueue = new MQQueue(queueName);
             ObjectMapper objectMapper = new ObjectMapper();
             String orderString = objectMapper.writeValueAsString(order);
 
