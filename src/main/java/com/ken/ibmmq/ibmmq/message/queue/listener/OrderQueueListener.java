@@ -13,6 +13,8 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.TextMessage;
 
+
+//Traditional listener
 @EnableJms
 @Component
 public class OrderQueueListener {
