@@ -12,12 +12,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jms.JmsException;
 import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.core.JmsTemplate;
+import org.springframework.jms.support.converter.MessageConverter;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.jms.Destination;
 import javax.jms.JMSException;
+import javax.jms.Message;
 
 @RestController
 public class SendController {
@@ -48,7 +51,10 @@ public class SendController {
             String orderString = objectMapper.writeValueAsString(order);
 
             LOGGER.info("Sending data: {}", orderString);
-            jmsTemplate.convertAndSend(sendMessageQueue, orderString, message -> {
+
+            jmsTemplate.send(sendMessageQueue, session -> {
+                Message message = getRequiredMessageConverter().toMessage(orderString, session);
+                message.setJMSReplyTo(session.createQueue("DEV.QUEUE.2"));//try new MQQueue();
                 message.setJMSCorrelationID(correlationId);
                 return message;
             });
@@ -56,6 +62,15 @@ public class SendController {
         } catch(JmsException | JMSException | JsonProcessingException ex) {
             ex.printStackTrace();
             return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private MessageConverter getRequiredMessageConverter() throws IllegalStateException {
+        MessageConverter converter = jmsTemplate.getMessageConverter();
+        if (converter == null) {
+            throw new IllegalStateException("No 'messageConverter' specified. Check configuration of JmsTemplate.");
+        } else {
+            return converter;
         }
     }
 }

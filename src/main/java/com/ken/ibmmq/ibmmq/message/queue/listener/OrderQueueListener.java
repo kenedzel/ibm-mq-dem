@@ -15,8 +15,8 @@ import javax.jms.TextMessage;
 
 
 //Traditional listener
-@EnableJms
-@Component
+//@EnableJms
+//@Component
 public class OrderQueueListener {
 
     @Autowired
