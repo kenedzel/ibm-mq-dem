@@ -1,5 +1,11 @@
 package com.ken.ibmmq.ibmmq.message.queue.listener;
 
+import com.db.operator.dboperator.service.DeviceService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ken.ibmmq.ibmmq.model.Device;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jms.annotation.EnableJms;
@@ -8,6 +14,7 @@ import org.springframework.jms.config.JmsListenerEndpointRegistrar;
 import org.springframework.jms.config.SimpleJmsListenerEndpoint;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.support.converter.MessageConverter;
+
 
 import javax.jms.JMSException;
 import javax.jms.Message;
@@ -20,8 +27,13 @@ import java.util.List;
 @EnableJms
 public class OrderQueueListenerConfig implements JmsListenerConfigurer {
 
+
+    @Autowired
+    private DeviceService deviceService;
+
     @Autowired
     private JmsTemplate jmsTemplate;
+
     List<String> queueNames = Arrays.asList("DEV.QUEUE.1", "DEV.QUEUE.2", "DEV.QUEUE.3", "DEV.QUEUE.4");
 
     @Override
@@ -35,13 +47,28 @@ public class OrderQueueListenerConfig implements JmsListenerConfigurer {
                 try {
                     //message => Message
                     System.out.println("---------------" + message.getJMSDestination().toString() + " Message Received ---------------");
-                    TextMessage textMessage = (TextMessage) message;
                     System.out.println("Print From Config jms listener message handling: " + message.getJMSCorrelationID());
                     System.out.println("Identity Destination: " + message.getJMSDestination().toString());
                     System.out.println("Received Message: " + ((TextMessage) message).getText());
-                    sendMessageReplyTo(message);
+//                    sendMessageReplyTo(message); TEMP disable to test imported save function
+                    //TODO: call imported save function
                     System.out.println("----------------------------------------");
-                } catch (JMSException e) {
+                    System.out.println("Decoding message");
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    Object decoded = objectMapper.readValue(((TextMessage) message).getText(), Device.class);
+                    com.db.operator.dboperator.model.Device device = new com.db.operator.dboperator.model.Device();
+                    BeanUtils.copyProperties(decoded, device);
+                    deviceService.saveDevice(device);
+                    System.out.println("Fetching all data from H2DB....");
+                    deviceService.fetchAllDevices().forEach(device1 ->
+                    {
+                        try {
+                            System.out.println("Device: " + objectMapper.writeValueAsString(device1));
+                        } catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                } catch (JMSException | JsonProcessingException e) {
                     throw new RuntimeException(e);
                 }
             });

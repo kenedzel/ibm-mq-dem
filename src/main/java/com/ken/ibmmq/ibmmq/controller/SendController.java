@@ -3,6 +3,7 @@ package com.ken.ibmmq.ibmmq.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ibm.mq.jms.MQQueue;
+import com.ken.ibmmq.ibmmq.model.Device;
 import com.ken.ibmmq.ibmmq.model.Order;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,11 +45,16 @@ public class SendController {
         return sendMessageToQueue("DEV.QUEUE.3", order, correlationId);
     }
 
-    private ResponseEntity<String> sendMessageToQueue(String queueName, Order order, String correlationId) {
+    @PostMapping("senddevice")
+    public ResponseEntity<String> sendQ3(@RequestHeader(value = "x-correlation-id") String correlationId, @RequestBody Device device) {
+        return sendMessageToQueue("DEV.QUEUE.1", device, correlationId);
+    }
+
+    private ResponseEntity<String> sendMessageToQueue(String queueName, Object requestData, String correlationId) {
         try  {
             MQQueue sendMessageQueue = new MQQueue(queueName);
             ObjectMapper objectMapper = new ObjectMapper();
-            String orderString = objectMapper.writeValueAsString(order);
+            String orderString = objectMapper.writeValueAsString(requestData);
 
             LOGGER.info("Sending data: {}", orderString);
 
