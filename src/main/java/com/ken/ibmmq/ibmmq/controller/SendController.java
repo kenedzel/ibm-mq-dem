@@ -2,7 +2,6 @@ package com.ken.ibmmq.ibmmq.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ibm.mq.jms.MQQueue;
 import com.ken.ibmmq.ibmmq.model.Device;
 import com.ken.ibmmq.ibmmq.model.Order;
 import org.slf4j.Logger;
@@ -11,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jms.JmsException;
-import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.support.converter.MessageConverter;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,8 +17,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.jms.Destination;
-import javax.jms.JMSException;
 import javax.jms.Message;
 
 @RestController
@@ -52,20 +48,20 @@ public class SendController {
 
     private ResponseEntity<String> sendMessageToQueue(String queueName, Object requestData, String correlationId) {
         try  {
-            MQQueue sendMessageQueue = new MQQueue(queueName);
             ObjectMapper objectMapper = new ObjectMapper();
             String orderString = objectMapper.writeValueAsString(requestData);
 
             LOGGER.info("Sending data: {}", orderString);
 
-            jmsTemplate.send(sendMessageQueue, session -> {
+            jmsTemplate.send(queueName, session -> {
                 Message message = getRequiredMessageConverter().toMessage(orderString, session);
                 message.setJMSReplyTo(session.createQueue("DEV.QUEUE.2"));//try new MQQueue();
                 message.setJMSCorrelationID(correlationId);
                 return message;
             });
+
             return new ResponseEntity<>(orderString, HttpStatus.ACCEPTED);
-        } catch(JmsException | JMSException | JsonProcessingException ex) {
+        } catch(JmsException | JsonProcessingException ex) {
             ex.printStackTrace();
             return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
